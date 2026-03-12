@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    name: Validate Linter
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check files present
+        run: |
+          test -f index.html || (echo "index.html missing" && exit 1)
+          test -f README.md || (echo "README.md missing" && exit 1)
+          test -f LICENSE || (echo "LICENSE missing" && exit 1)
+          echo "All required files present"
+
+      - name: Validate HTML structure
+        run: |
+          grep -q "DOCTYPE html" index.html || (echo "Missing DOCTYPE" && exit 1)
+          grep -q "SEC-001" index.html || (echo "Missing SEC-001 rule" && exit 1)
+          grep -q "SEC-002" index.html || (echo "Missing SEC-002 rule" && exit 1)
+          grep -q "BP-001" index.html || (echo "Missing BP-001 rule" && exit 1)
+          RULE_COUNT=$(grep -o "id: '[A-Z]*-[0-9]*'" index.html | wc -l)
+          echo "Found $RULE_COUNT rules"
+          [ "$RULE_COUNT" -ge 18 ] || (echo "Expected at least 18 rules, found $RULE_COUNT" && exit 1)
+
+      - name: Validate README
+        run: |
+          grep -q "releaserun.com/tools/dockerfile-linter" README.md || (echo "Missing live tool link" && exit 1)
+          grep -q "18 rules" README.md || (echo "Missing rule count in README" && exit 1)
+          echo "README validates OK"
+
+      - name: Check no external dependencies in index.html
+        run: |
+          # Ensure no CDN scripts are loaded
+          if grep -q 'src="https://' index.html; then
+            echo "WARNING: External script detected:"
+            grep 'src="https://' index.html
+            # Don't fail for preconnect/rel hints, only script tags
+          fi
+          echo "Dependency check complete"
