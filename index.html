@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dockerfile Linter — ReleaseRun</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.header{background:#1e293b;border-bottom:1px solid #334155;padding:16px 24px;display:flex;align-items:center;gap:12px}
+.header a{color:#38bdf8;text-decoration:none;font-size:.85rem}
+.header h1{font-size:1.1rem;font-weight:700;color:#f1f5f9}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:700;text-transform:uppercase}
+.badge-free{background:#0f4c81;color:#7dd3fc}
+.container{max-width:1100px;margin:0 auto;padding:24px 16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.panel{background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden}
+.panel-header{padding:12px 16px;border-bottom:1px solid #334155;font-size:.88rem;font-weight:600;color:#94a3b8;display:flex;align-items:center;justify-content:space-between}
+.panel-body{padding:16px}
+textarea{width:100%;height:320px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:12px;font-family:'JetBrains Mono',Consolas,monospace;font-size:.82rem;resize:vertical;outline:none;line-height:1.6}
+textarea:focus{border-color:#38bdf8}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:6px;border:none;cursor:pointer;font-size:.88rem;font-weight:600;transition:all .15s}
+.btn-primary{background:#0ea5e9;color:#fff}
+.btn-primary:hover{background:#0284c7}
+.btn-ghost{background:#334155;color:#cbd5e1}
+.btn-ghost:hover{background:#475569}
+.btn-sm{padding:5px 10px;font-size:.78rem}
+.btn-row{display:flex;gap:8px;margin-top:12px}
+.finding{border-radius:7px;padding:12px 14px;margin-bottom:8px;border-left:4px solid}
+.finding-critical{background:#450a0a;border-color:#dc2626}
+.finding-high{background:#431407;border-color:#ea580c}
+.finding-medium{background:#422006;border-color:#d97706}
+.finding-low{background:#052e16;border-color:#16a34a}
+.finding-header{display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:700;margin-bottom:4px}
+.finding-rule{font-family:monospace;font-size:.78rem;color:#94a3b8}
+.finding-msg{font-size:.83rem;color:#cbd5e1;margin-bottom:4px}
+.finding-fix{font-size:.78rem;color:#94a3b8;font-style:italic}
+.finding-line{font-size:.75rem;color:#64748b;margin-top:4px;font-family:monospace}
+.sev-icon{font-size:.9rem}
+.summary-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.stat{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-size:.82rem;text-align:center}
+.stat strong{display:block;font-size:1.1rem}
+.stat.crit strong{color:#f87171}
+.stat.high strong{color:#fb923c}
+.stat.med strong{color:#fbbf24}
+.stat.low strong{color:#4ade80}
+.grade{font-size:2.5rem;font-weight:900;line-height:1}
+.grade-A{color:#4ade80}.grade-B{color:#a3e635}.grade-C{color:#fbbf24}
+.grade-D{color:#fb923c}.grade-F{color:#f87171}
+.empty{text-align:center;padding:32px;color:#475569;font-size:.9rem}
+.example-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>🐳 Dockerfile Linter <span class="badge badge-free">Free</span></h1>
+  </div>
+  <div style="margin-left:auto;font-size:.82rem">
+    <a href="https://releaserun.com/tools/dockerfile-linter/" target="_blank">Full tool →</a>
+    &nbsp;·&nbsp;
+    <a href="https://releaserun.com" target="_blank">ReleaseRun</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-header">
+        Paste your Dockerfile
+        <span style="font-weight:400;font-size:.78rem">18 rules · runs in browser · no upload</span>
+      </div>
+      <div class="panel-body">
+        <div class="example-btns">
+          <button class="btn btn-ghost btn-sm" onclick="loadExample('good')">✅ Good example</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadExample('bad')">❌ Bad example</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadExample('nodejs')">Node.js app</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadExample('python')">Python app</button>
+        </div>
+        <textarea id="df-input" placeholder="FROM ubuntu:latest
+RUN apt-get update && apt-get install -y curl
+COPY . .
+CMD [&quot;./app&quot;]" spellcheck="false"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="dfLint()">🔍 Lint Dockerfile</button>
+          <button class="btn btn-ghost" onclick="dfClear()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        Results
+        <span id="df-grade" style="font-size:1.4rem;font-weight:900"></span>
+      </div>
+      <div class="panel-body" id="df-results">
+        <div class="empty">Paste a Dockerfile and click Lint to see results.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var RULES=[
+  {id:'SEC-001',sev:'critical',name:'Pin image tags',check:function(l){return l.match(/^FROM\s+\S+:latest\b/i)||l.match(/^FROM\s+[^:@\s]+\s*$/i)?'Base image uses `latest` or no tag — unpredictable in production':null},fix:'Use a specific tag: FROM ubuntu:22.04',detect:function(lines){return lines.filter(function(l,i){var m=l.match(/^FROM\s+(\S+)/i);return m&&(m[1].endsWith(':latest')||(!m[1].includes(':')));})}},
+  {id:'SEC-002',sev:'critical',name:'Run as non-root user',check:null,fix:'Add: USER nobody (before CMD)',detectFile:function(lines){var hasUser=lines.some(function(l){return l.match(/^USER\s+(?!root\b)/i);});return hasUser?[]:['(no USER instruction — runs as root by default)'];}},
+  {id:'SEC-003',sev:'high',name:'Avoid COPY . .',check:function(l){return l.match(/^COPY\s+\.\s+\./)?'`COPY . .` copies everything including secrets and node_modules':null},fix:'Use .dockerignore and copy specific files'},
+  {id:'SEC-004',sev:'medium',name:'Pin to digest for prod',check:null,fix:'Use digest: FROM ubuntu@sha256:abc123...',detectFile:function(lines){var hasDigest=lines.some(function(l){return l.match(/^FROM\s+\S+@sha256:/i);});var hasFrom=lines.some(function(l){return l.match(/^FROM\s+/i);});return (hasFrom&&!hasDigest)?['Consider pinning to digest for reproducible builds']:[];}},
+  {id:'SEC-005',sev:'medium',name:'Clean apt cache',check:function(l){return(l.includes('apt-get install')||l.includes('apt install'))&&!l.includes('rm -rf /var/lib/apt/lists')&&!l.includes('&&')? 'apt install without cache cleanup inflates image size':null},fix:'Combine: RUN apt-get update && apt-get install -y pkg && rm -rf /var/lib/apt/lists/*'},
+  {id:'SEC-006',sev:'high',name:'Avoid USER root',check:function(l){return l.match(/^USER\s+root\b/i)?'Explicitly setting USER root is a security risk':null},fix:'Remove USER root or set a non-root user before CMD'},
+  {id:'SEC-007',sev:'low',name:'Use multi-stage builds',check:null,fix:'Use: FROM base AS builder ... FROM scratch AS final',detectFile:function(lines){var fromCount=lines.filter(function(l){return l.match(/^FROM\s+/i);}).length;return fromCount===1&&lines.length>20?['Single-stage build — consider multi-stage to reduce final image size']:[];}},
+  {id:'BP-001',sev:'high',name:'Use .dockerignore',check:null,fix:'Create a .dockerignore file to exclude node_modules, .git, secrets',detectFile:function(lines){var hasCopy=lines.some(function(l){return l.match(/^COPY\s+\./);});return hasCopy?['Add a .dockerignore file (cannot verify from Dockerfile alone — this is a reminder)']:[];}},
+  {id:'BP-002',sev:'medium',name:'Combine RUN commands',check:null,fix:'Chain: RUN cmd1 && cmd2 && cmd3',detectFile:function(lines){var runs=lines.filter(function(l){return l.match(/^RUN\s+/i)&&!l.includes('&&');});return runs.length>=3?['Multiple single-command RUN instructions create unnecessary layers']:[];}},
+  {id:'BP-003',sev:'medium',name:'Use COPY not ADD',check:function(l){return l.match(/^ADD\s+(?!https?:\/\/)/i)?'`ADD` unpacks archives and has surprising behavior — use `COPY` for local files':null},fix:'Replace ADD with COPY for local files'},
+  {id:'BP-004',sev:'medium',name:'Set CMD or ENTRYPOINT',check:null,fix:'Add: CMD ["./app"] or ENTRYPOINT ["/app"]',detectFile:function(lines){var hasCmd=lines.some(function(l){return l.match(/^CMD\s+|^ENTRYPOINT\s+/i);});return hasCmd?[]:['No CMD or ENTRYPOINT — container has no default command'];}},
+  {id:'BP-005',sev:'medium',name:'Pin package versions',check:function(l){return(l.includes('apt-get install')||l.includes('apt install'))&&l.match(/install\s+-y\s+\w+\s*$/)?'Package versions not pinned — builds may differ over time':null},fix:'Pin versions: apt-get install -y curl=7.81.0-1'},
+  {id:'BP-006',sev:'low',name:'Set ENV variables',check:null,fix:'Use ENV NODE_ENV=production, ENV PYTHONDONTWRITEBYTECODE=1, etc.',detectFile:function(lines){var hasEnv=lines.some(function(l){return l.match(/^ENV\s+/i);});return hasEnv?[]:['No ENV instructions — consider setting environment-specific variables'];}},
+  {id:'BP-007',sev:'low',name:'Add LABEL metadata',check:null,fix:'Add LABEL maintainer="name@example.com" version="1.0"',detectFile:function(lines){var hasLabel=lines.some(function(l){return l.match(/^LABEL\s+/i);});return hasLabel?[]:['No LABEL metadata — add maintainer/version labels'];}},
+  {id:'BP-008',sev:'low',name:'Use HEALTHCHECK',check:null,fix:'Add: HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1',detectFile:function(lines){var hasHC=lines.some(function(l){return l.match(/^HEALTHCHECK\s+/i);});return hasHC?[]:['No HEALTHCHECK instruction — container has no health signal'];}},
+  {id:'PERF-001',sev:'high',name:'Use .dockerignore for build context',check:null,fix:'Exclude node_modules, .git, *.log in .dockerignore',detectFile:function(lines){var hasCopyAll=lines.some(function(l){return l.match(/^COPY\s+\.\s+\./);});return hasCopyAll?['`COPY . .` without .dockerignore may send large build context to daemon']:[];}},
+  {id:'PERF-002',sev:'medium',name:'Order instructions for cache',check:null,fix:'COPY package.json first, RUN npm install, then COPY . .',detectFile:function(lines){var copyDotIdx=lines.findIndex(function(l){return l.match(/^COPY\s+\.\s+\./);});var installIdx=lines.findIndex(function(l){return l.match(/npm install|pip install|go mod download/);});return (copyDotIdx>=0&&installIdx>copyDotIdx)?['Dependency install comes after COPY . . — rebuild on every code change']:[];}},
+  {id:'PERF-003',sev:'low',name:'Use --no-install-recommends',check:function(l){return(l.includes('apt-get install')||l.includes('apt install'))&&!l.includes('--no-install-recommends')?'apt-get install without --no-install-recommends installs extra packages':null},fix:'Add --no-install-recommends to apt-get install'}
+];
+
+var SEV_ORDER={critical:0,high:1,medium:2,low:3};
+var SEV_CLASS={critical:'finding-critical',high:'finding-high',medium:'finding-medium',low:'finding-low'};
+var SEV_ICON={critical:'🔴',high:'🟠',medium:'🟡',low:'🔵'};
+
+function dfLint(){
+  var raw=document.getElementById('df-input').value.trim();
+  if(!raw){document.getElementById('df-results').innerHTML='<div class="empty">Paste a Dockerfile to lint.</div>';return;}
+  var lines=raw.split('\n').map(function(l){return l.trim();});
+  var findings=[];
+  RULES.forEach(function(rule){
+    if(rule.check){
+      lines.forEach(function(l,i){
+        if(!l||l.startsWith('#'))return;
+        var msg=rule.check(l);
+        if(msg)findings.push({rule:rule.id,sev:rule.sev,name:rule.name,msg:msg,fix:rule.fix,line:i+1});
+      });
+    }
+    if(rule.detectFile){
+      var results=rule.detectFile(lines);
+      results.forEach(function(msg){
+        findings.push({rule:rule.id,sev:rule.sev,name:rule.name,msg:msg,fix:rule.fix,line:null});
+      });
+    }
+  });
+  findings.sort(function(a,b){return SEV_ORDER[a.sev]-SEV_ORDER[b.sev];});
+  var counts={critical:0,high:0,medium:0,low:0};
+  findings.forEach(function(f){counts[f.sev]++;});
+  var total=findings.length;
+  var grade=total===0?'A':counts.critical>0?'F':counts.high>=3?'D':counts.high>=1?'C':counts.medium>=3?'C':counts.medium>=1?'B':'B';
+  document.getElementById('df-grade').className='grade grade-'+grade;
+  document.getElementById('df-grade').textContent='Grade: '+grade;
+  var html='<div class="summary-bar">'
+    +'<div class="stat crit"><strong>'+counts.critical+'</strong>Critical</div>'
+    +'<div class="stat high"><strong>'+counts.high+'</strong>High</div>'
+    +'<div class="stat med"><strong>'+counts.medium+'</strong>Medium</div>'
+    +'<div class="stat low"><strong>'+counts.low+'</strong>Low</div>'
+    +'</div>';
+  if(!findings.length){
+    html+='<div style="text-align:center;padding:24px;color:#4ade80;font-weight:600">✅ No issues found. Nice Dockerfile!</div>';
+  } else {
+    findings.forEach(function(f){
+      html+='<div class="finding '+SEV_CLASS[f.sev]+'">'
+        +'<div class="finding-header"><span class="sev-icon">'+SEV_ICON[f.sev]+'</span>'
+        +f.name+' <span class="finding-rule">'+f.rule+'</span></div>'
+        +'<div class="finding-msg">'+f.msg+'</div>'
+        +'<div class="finding-fix">Fix: '+f.fix+'</div>'
+        +(f.line?'<div class="finding-line">Line '+f.line+'</div>':'')
+        +'</div>';
+    });
+  }
+  document.getElementById('df-results').innerHTML=html;
+}
+
+function dfClear(){
+  document.getElementById('df-input').value='';
+  document.getElementById('df-results').innerHTML='<div class="empty">Paste a Dockerfile and click Lint to see results.</div>';
+  document.getElementById('df-grade').textContent='';
+}
+
+var EXAMPLES={
+  bad:`FROM ubuntu:latest
+RUN apt-get update
+RUN apt-get install -y curl wget
+RUN apt-get install -y python3
+COPY . .
+CMD ./app`,
+  good:`FROM ubuntu:22.04 AS builder
+LABEL maintainer="team@example.com" version="1.0"
+ENV APP_HOME=/app
+WORKDIR $APP_HOME
+COPY requirements.txt .
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src/ ./src/
+FROM ubuntu:22.04
+WORKDIR /app
+COPY --from=builder /app .
+USER nobody
+HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1
+CMD ["python3", "src/main.py"]`,
+  nodejs:`FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY src/ ./src/
+USER node
+EXPOSE 3000
+HEALTHCHECK CMD wget -qO- http://localhost:3000/health || exit 1
+CMD ["node", "src/index.js"]`,
+  python:`FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+USER nobody
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0"]`
+};
+
+function loadExample(name){
+  document.getElementById('df-input').value=EXAMPLES[name]||'';
+  dfLint();
+}
+
+window.onload=function(){
+  var params=new URLSearchParams(window.location.search);
+  if(params.get('demo')==='1')loadExample('bad');
+};
+</script>
+</body>
+</html>
